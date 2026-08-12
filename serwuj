@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# serwuj — uruchamia serwer API/GUI Marek_voice w środowisku .venv.
+# Przenośne (macOS / Linux / WSL2). Zmienne: MOWA_PORT, MOWA_URZADZENIE, MOWA_DEEPSPEED.
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PY="$DIR/.venv/bin/python"
+if [ ! -x "$PY" ]; then
+  echo "Brak środowiska .venv — uruchom najpierw:  ./instaluj.sh" >&2
+  exit 1
+fi
+exec "$PY" "$DIR/serwer.py" "$@"

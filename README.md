@@ -98,6 +98,31 @@ jest tam wolniejszy niż CPU. Na maszynie z NVIDIA dodaj `--deepspeed` dla ~2×:
 ./mow wyklad.txt --deepspeed           # Linux/WSL2 + CUDA
 ```
 
+### Serwer + GUI (studio)
+
+Zamiast CLI można uruchomić serwer z graficznym interfejsem w stylu studia montażu.
+Model ładuje się **raz** i pozostaje „ciepły" — kolejne generacje ruszają bez ~15 s narzutu.
+
+```bash
+./serwuj                # uruchamia serwer, potem otwórz http://127.0.0.1:8000
+```
+
+GUI oferuje: pole tekstu i wczytywanie `.txt`/`.docx`, **przełącznik profili głosowych**,
+**nagrywarkę próbki** (tworzy nowy profil z mikrofonu), wizualizację fali z odtwarzaczem,
+wybór formatu i tempa oraz pobieranie wyniku.
+
+Zmienne środowiskowe: `MOWA_PORT` (domyślnie 8000), `MOWA_URZADZENIE` (`auto`/`cpu`/`cuda`/`mps`),
+`MOWA_DEEPSPEED=1` (CUDA). Przykład na maszynie z RTX:
+
+```bash
+MOWA_DEEPSPEED=1 ./serwuj
+```
+
+Profile to pliki `glos/*.wav`. Endpointy API (do integracji): `GET /api/status`,
+`GET/POST /api/profile`, `DELETE /api/profile/{nazwa}`, `POST /api/mowa`.
+Uwaga: serwer słucha tylko na `127.0.0.1` (lokalnie); nagrywanie z mikrofonu działa
+na `localhost` bez HTTPS.
+
 ---
 
 ## 4. Migracja między platformami (Mac ⇄ WSL/Linux)

@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Marek_voice — Studio</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app">
+    <!-- ── PASEK GÓRNY ─────────────────────────────────────────── -->
+    <header class="topbar">
+      <div class="brand">
+        <span class="logo">◈</span>
+        <span class="title">MAREK_VOICE</span>
+        <span class="sub">STUDIO</span>
+      </div>
+      <div class="status" id="status" title="stan silnika">
+        <span class="led" id="led"></span>
+        <span class="status-text" id="statusText">łączenie…</span>
+      </div>
+    </header>
+
+    <main class="grid">
+      <!-- ── SCENARIUSZ ────────────────────────────────────────── -->
+      <section class="panel script">
+        <div class="panel-head"><span class="tick"></span>SCENARIUSZ
+          <span class="meta" id="licznik">0 znaków · 0 fragm.</span>
+        </div>
+        <textarea id="tekst" spellcheck="false"
+          placeholder="Wpisz lub wklej tekst komentarza…&#10;albo przeciągnij plik .txt / .docx poniżej."></textarea>
+        <div class="dropzone" id="dropzone">
+          <input type="file" id="plikInput" accept=".txt,.docx,.md" hidden>
+          <span id="dropLabel">Przeciągnij plik lub <button class="link" id="wybierzPlik">wybierz .txt / .docx</button></span>
+          <span class="chip" id="plikChip" hidden></span>
+        </div>
+        <div class="controls">
+          <label class="ctl">GŁOS
+            <select id="profilSel"></select>
+          </label>
+          <label class="ctl">FORMAT
+            <select id="formatSel"></select>
+          </label>
+          <label class="ctl slider">TEMPO <b id="tempoVal">1.00×</b>
+            <input type="range" id="tempo" min="0.6" max="1.4" step="0.05" value="1.0">
+          </label>
+          <button class="btn primary" id="generuj"><span class="i">▶</span> GENERUJ</button>
+        </div>
+      </section>
+
+      <!-- ── ODSŁUCH ───────────────────────────────────────────── -->
+      <section class="panel output">
+        <div class="panel-head"><span class="tick amber"></span>ODSŁUCH
+          <span class="meta" id="outMeta">—</span>
+        </div>
+        <div class="fala-wrap">
+          <canvas id="fala" class="fala"></canvas>
+          <div class="render-overlay" id="render" hidden>
+            <span class="ro-text">RENDEROWANIE<span class="dots"><i>.</i><i>.</i><i>.</i></span></span>
+          </div>
+        </div>
+        <div class="transport">
+          <button class="btn round" id="play" disabled>▶</button>
+          <span class="timecode" id="tc">00:00 / 00:00</span>
+          <a class="btn ghost" id="pobierz" download hidden><span class="i">⤓</span> POBIERZ</a>
+        </div>
+        <audio id="audio" preload="auto"></audio>
+      </section>
+
+      <!-- ── PROFILE + NAGRYWARKA ──────────────────────────────── -->
+      <aside class="panel profiles">
+        <div class="panel-head"><span class="tick cyan"></span>PROFILE GŁOSU</div>
+        <ul class="profil-list" id="profilList"></ul>
+
+        <div class="rec">
+          <div class="panel-sub"><span class="tick red"></span>NAGRAJ NOWĄ PRÓBKĘ</div>
+          <canvas id="meter" class="meter"></canvas>
+          <div class="rec-row">
+            <button class="btn rec-btn" id="recBtn"><span class="rec-dot"></span><span id="recLabel">NAGRAJ</span></button>
+            <span class="timecode" id="recTime">00:00</span>
+          </div>
+          <audio id="recPreview" controls hidden></audio>
+          <div class="rec-save" id="recSave" hidden>
+            <input type="text" id="recNazwa" maxlength="40" placeholder="nazwa profilu, np. Marek_studio">
+            <button class="btn primary sm" id="zapiszProfil">ZAPISZ</button>
+          </div>
+          <div class="hint">Najlepiej 15–30&nbsp;s spokojnej, czystej mowy — bez szumu i&nbsp;muzyki.</div>
+        </div>
+      </aside>
+    </main>
+
+    <footer class="footer">
+      <span id="deviceInfo">—</span>
+      <span class="sep">·</span>
+      <span>XTTS-v2 · lokalnie i offline</span>
+    </footer>
+  </div>
+
+  <div class="toast" id="toast" hidden></div>
+  <script src="app.js"></script>
+</body>
+</html>

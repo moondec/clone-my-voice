@@ -10,3 +10,5 @@ __pycache__/
 # Pliki robocze i tymczasowe
 *.tmp
 _*
+# Wygenerowane audio z serwera
+nagrania/

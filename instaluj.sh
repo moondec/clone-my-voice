@@ -105,6 +105,8 @@ fi
 # UWAGA: transformers MUSI być <5 — od 5.x znika isin_mps_friendly i import TTS pada.
 log "Instaluję coqui-tts i zależności..."
 pip_install -q "coqui-tts" "transformers>=4.57,<5" python-docx pyperclip soundfile numpy
+log "Instaluję zależności serwera API (FastAPI)..."
+pip_install -q fastapi "uvicorn[standard]" python-multipart
 
 # ---------------------------------------------------------------- 7) DeepSpeed (opcjonalnie, CUDA)
 if [ $CUDA -eq 1 ] && [ $WITH_DEEPSPEED -eq 1 ]; then
