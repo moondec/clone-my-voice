@@ -1,8 +1,12 @@
 # Marek_voice — tekst → mowa w moim głosie
 
-Narzędzie CLI zamieniające tekst (`.txt`, `.docx` lub schowek systemowy) na plik
+Narzędzie zamieniające tekst (`.txt`, `.docx` lub schowek systemowy) na plik
 audio (`mp3`, `wav`, `m4a`, `ogg`, `flac`) czytany moim **sklonowanym głosem**.
-Działa **lokalnie i offline** na modelu Coqui **XTTS-v2**.
+Działa **lokalnie i offline** na modelu Coqui **XTTS-v2**. Dwa sposoby użycia:
+
+- **CLI** — `./mow` (pojedynczo, wsadowo, ze schowka); zobacz sekcję 3.
+- **Serwer + GUI** — `./serwuj`, potem przeglądarka; interfejs w stylu studia
+  montażu z profilami głosu i nagrywarką próbki; zobacz sekcję 3 → „Serwer + GUI".
 
 Jedna baza kodu działa na trzech platformach — instalator sam wykrywa środowisko:
 
@@ -18,7 +22,8 @@ Jedna baza kodu działa na trzech platformach — instalator sam wykrywa środow
 
 Wspólne (instaluje `instaluj.sh`): **Python 3.9–3.12** (NIE 3.13 — coqui-tts go nie
 wspiera), `ffmpeg`, oraz pakiety Pythona: `coqui-tts`, `transformers<5`, `torch`,
-`torchaudio`, `torchcodec`, `soundfile`, `numpy`, `python-docx`, `pyperclip`.
+`torchaudio`, `torchcodec`, `soundfile`, `numpy`, `python-docx`, `pyperclip`
+oraz dla serwera/GUI: `fastapi`, `uvicorn`, `python-multipart`.
 
 Zależne od platformy:
 
@@ -68,7 +73,7 @@ dla całej partii, a każdy plik audio dostaje nazwę pliku wejściowego:
 ```bash
 ./mow wyklad1.txt wyklad2.txt notatka.docx   # kilka plików naraz
 ./mow materialy/                             # cały folder (.txt/.docx w środku)
-./mow materialy/ -f wav -d nagrania/         # wyniki do osobnego katalogu
+./mow materialy/ -f wav -d wyniki/           # wyniki do osobnego katalogu
 ```
 
 ### Opcje
@@ -117,6 +122,11 @@ Zmienne środowiskowe: `MOWA_PORT` (domyślnie 8000), `MOWA_URZADZENIE` (`auto`/
 ```bash
 MOWA_DEEPSPEED=1 ./serwuj
 ```
+
+Interfejs to pliki w `web/` (`index.html` + `style.css` + `app.js`) serwowane przez
+serwer pod adresem `/`. **Nie otwieraj `web/index.html` bezpośrednio** (`file://`) —
+bez działającego serwera zapytania do `/api/...` padają (pokaże się układ, ale bez
+danych i generowania). Zawsze przez `./serwuj` → http://127.0.0.1:8000.
 
 Profile to pliki `glos/*.wav`. Endpointy API (do integracji): `GET /api/status`,
 `GET/POST /api/profile`, `DELETE /api/profile/{nazwa}`, `POST /api/mowa`.
