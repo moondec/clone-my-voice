@@ -60,14 +60,26 @@ Najprościej przez launcher `./mow` (uruchamia narzędzie w `.venv`):
 ./mow --tekst "Dzień dobry, tu Marek." -o powitanie.mp3
 ```
 
+### Tryb wsadowy (seryjne przetwarzanie)
+
+Podaj wiele plików lub cały folder — model i „odcisk głosu" liczone są **raz**
+dla całej partii, a każdy plik audio dostaje nazwę pliku wejściowego:
+
+```bash
+./mow wyklad1.txt wyklad2.txt notatka.docx   # kilka plików naraz
+./mow materialy/                             # cały folder (.txt/.docx w środku)
+./mow materialy/ -f wav -d nagrania/         # wyniki do osobnego katalogu
+```
+
 ### Opcje
 
 | Opcja | Znaczenie | Domyślnie |
 |-------|-----------|-----------|
-| `wejscie` | plik `.txt` lub `.docx` | — |
+| `wejscie` | plik(i) `.txt`/`.docx` lub folder(y) — wiele naraz | — |
 | `--schowek` | czytaj tekst ze schowka | — |
 | `--tekst "..."` | tekst podany wprost | — |
-| `-o, --output` | plik wyjściowy | nazwa jak wejścia |
+| `-o, --output` | plik wyjściowy (pojedyncze wejście) | nazwa jak wejścia |
+| `-d, --katalog-wy` | katalog na wyniki (tryb wsadowy) | obok wejść |
 | `-f, --format` | `mp3`/`wav`/`m4a`/`ogg`/`flac` | `mp3` |
 | `-g, --glos` | próbka głosu (`.wav`) | `glos/Marek_ref.wav` |
 | `-j, --jezyk` | język tekstu | `pl` |

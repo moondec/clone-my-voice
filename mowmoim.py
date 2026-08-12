@@ -65,18 +65,22 @@ def tekst_ze_schowka() -> str:
     return pyperclip.paste()
 
 
-def pobierz_tekst(args) -> str:
-    if args.tekst:
-        return args.tekst
-    if args.schowek:
-        return tekst_ze_schowka()
-    if args.wejscie:
-        sciezka = Path(args.wejscie).expanduser()
-        if not sciezka.exists():
-            sys.exit(f"Plik nie istnieje: {sciezka}")
-        return tekst_z_pliku(sciezka)
-    sys.exit("Podaj plik wejściowy, albo --schowek, albo --tekst \"...\". "
-             "Zobacz: python mowmoim.py -h")
+ROZSZERZENIA = (".txt", ".docx", ".md")
+
+
+def zbierz_pliki(wejscia: list[str]) -> list[Path]:
+    """Rozwija listę ścieżek: pliki bierze wprost, foldery skanuje po .txt/.docx.
+    Zwraca posortowaną listę istniejących plików wejściowych."""
+    pliki: list[Path] = []
+    for w in wejscia:
+        p = Path(w).expanduser()
+        if p.is_dir():
+            pliki += sorted(f for f in p.iterdir() if f.suffix.lower() in ROZSZERZENIA)
+        elif p.exists():
+            pliki.append(p)
+        else:
+            print(f"  Pomijam (nie istnieje): {p}")
+    return pliki
 
 
 # ------------------------------------------------------------------ dzielenie
@@ -168,22 +172,39 @@ def zaladuj_model(device: str, use_deepspeed: bool):
     return model, sr
 
 
-def syntezuj(model, sr: int, fragmenty: list[str], glos: Path, jezyk: str, predkosc: float):
-    """Zamienia listę fragmentów tekstu na jeden sygnał audio (numpy float32).
-    Odcisk głosu liczony RAZ i reużywany dla wszystkich fragmentów."""
+def policz_odcisk(model, glos: Path):
+    """Liczy 'odcisk głosu' (speaker latents) — RAZ na głos, reużywalny dla
+    wszystkich fragmentów i (w trybie wsadowym) wszystkich plików."""
+    return model.get_conditioning_latents(audio_path=[str(glos)])
+
+
+def syntezuj(model, sr: int, fragmenty: list[str], odcisk, jezyk: str, predkosc: float):
+    """Zamienia listę fragmentów tekstu na jeden sygnał audio (numpy float32),
+    używając wcześniej policzonego odcisku głosu."""
     import numpy as np
-    print("Analizuję próbkę głosu (raz)...")
-    gpt_cond_latent, speaker_embedding = model.get_conditioning_latents(audio_path=[str(glos)])
+    gpt_cond_latent, speaker_embedding = odcisk
     cisza = np.zeros(int(sr * 0.15), dtype=np.float32)   # krótka pauza między fragmentami
     kawalki = []
     for i, frag in enumerate(fragmenty, 1):
-        print(f"  [{i}/{len(fragmenty)}] {frag[:60]}...")
+        print(f"    [{i}/{len(fragmenty)}] {frag[:55]}...")
         out = model.inference(frag, jezyk, gpt_cond_latent, speaker_embedding,
                               speed=predkosc, enable_text_splitting=False)
         kawalki.append(np.asarray(out["wav"], dtype=np.float32))
         if i < len(fragmenty):
             kawalki.append(cisza)
     return np.concatenate(kawalki)
+
+
+def zapisz_audio(audio, sr: int, wyjscie: Path, fmt: str) -> None:
+    """Zapisuje sygnał audio do pliku w docelowym formacie (przez ffmpeg)."""
+    import soundfile as sf
+    wyjscie.parent.mkdir(parents=True, exist_ok=True)
+    tmp_wav = Path(tempfile.mktemp(suffix=".wav"))
+    sf.write(str(tmp_wav), audio, sr)
+    try:
+        polacz_i_konwertuj([tmp_wav], wyjscie, fmt)
+    finally:
+        tmp_wav.unlink(missing_ok=True)
 
 
 def odtworz(sciezka: Path) -> None:
@@ -204,10 +225,12 @@ def main() -> None:
         description="Zamień tekst na mowę Twoim sklonowanym głosem (XTTS-v2).",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=__doc__)
-    p.add_argument("wejscie", nargs="?", help="plik .txt lub .docx")
+    p.add_argument("wejscie", nargs="*", help="plik(i) .txt/.docx lub folder(y) — można podać wiele (tryb wsadowy)")
     p.add_argument("--schowek", action="store_true", help="czytaj tekst ze schowka systemowego")
     p.add_argument("--tekst", help="tekst podany bezpośrednio w cudzysłowie")
-    p.add_argument("-o", "--output", help="plik wyjściowy (domyślnie obok wejścia)")
+    p.add_argument("-o", "--output", help="plik wyjściowy (tylko pojedyncze wejście)")
+    p.add_argument("-d", "--katalog-wy", dest="katalog_wy",
+                   help="katalog na wyniki (tryb wsadowy; domyślnie obok każdego wejścia)")
     p.add_argument("-f", "--format", choices=list(FORMATY), default="mp3", help="format audio (domyślnie mp3)")
     p.add_argument("-g", "--glos", default=str(DOMYSLNY_GLOS), help="próbka głosu referencyjnego (.wav)")
     p.add_argument("-j", "--jezyk", default="pl", help="język tekstu (domyślnie pl)")
@@ -216,49 +239,70 @@ def main() -> None:
                    help="urządzenie: auto (cuda→cpu), cpu, cuda (Linux/NVIDIA), mps (Mac, wolniejszy)")
     p.add_argument("--deepspeed", action="store_true",
                    help="użyj DeepSpeed — tylko CUDA/Linux, ~2x szybciej (wymaga pakietu deepspeed)")
-    p.add_argument("--graj", action="store_true", help="odtwórz wynik po wygenerowaniu")
+    p.add_argument("--graj", action="store_true", help="odtwórz wynik po wygenerowaniu (pojedynczy plik)")
     args = p.parse_args()
+    fmt = args.format
 
-    # 1) tekst
-    tekst = pobierz_tekst(args).strip()
-    if not tekst:
-        sys.exit("Brak tekstu do przeczytania (źródło było puste).")
-    fragmenty = na_fragmenty(tekst)
-    print(f"Tekst: {len(tekst)} znaków → {len(fragmenty)} fragment(ów).")
+    # 1) zbuduj listę zadań: [(nazwa_źródła, tekst, ścieżka_wyjścia), ...]
+    def wy_domyslne():
+        return Path(args.output).expanduser() if args.output else Path.cwd() / f"mowa.{fmt}"
+
+    zadania: list[tuple[str, str, Path]] = []
+    if args.tekst is not None:
+        zadania.append(("(tekst)", args.tekst, wy_domyslne()))
+    elif args.schowek:
+        zadania.append(("(schowek)", tekst_ze_schowka(), wy_domyslne()))
+    else:
+        pliki = zbierz_pliki(args.wejscie)
+        if not pliki:
+            sys.exit("Podaj plik(i) .txt/.docx lub folder, albo --schowek / --tekst \"...\". "
+                     "Zobacz: ./mow -h")
+        katalog = Path(args.katalog_wy).expanduser() if args.katalog_wy else None
+        if len(pliki) > 1 and args.output:
+            print("  Uwaga: --output ignorowane przy wielu plikach (nazwy wyjść = nazwy wejść).")
+        for f in pliki:
+            if len(pliki) == 1 and args.output:
+                wy = Path(args.output).expanduser()
+            else:
+                wy = ((katalog / f.name) if katalog else f).with_suffix("." + fmt)
+            zadania.append((f.name, tekst_z_pliku(f), wy))
 
     # 2) głos referencyjny
     glos = Path(args.glos).expanduser()
     if not glos.exists():
         sys.exit(f"Brak próbki głosu: {glos}\n(Przygotuj ją skryptem przygotuj_glos.sh.)")
 
-    # 3) plik wyjściowy
-    if args.output:
-        wyjscie = Path(args.output).expanduser()
-    elif args.wejscie:
-        wyjscie = Path(args.wejscie).expanduser().with_suffix("." + args.format)
-    else:
-        wyjscie = Path.cwd() / f"mowa.{args.format}"
-
-    # 4) model + synteza
+    # 3) model + odcisk głosu — RAZ dla całej partii
     device = wykryj_urzadzenie(args.urzadzenie)
     ds_info = " + DeepSpeed" if (args.deepspeed and device == "cuda") else ""
-    print(f"Ładuję model XTTS-v2 na: {device}{ds_info} (pierwsze uruchomienie pobiera ~1.8 GB)...")
-    import soundfile as sf
+    tryb = f"wsadowy ({len(zadania)} plików)" if len(zadania) > 1 else "pojedynczy"
+    print(f"Tryb: {tryb}. Ładuję model XTTS-v2 na: {device}{ds_info} "
+          f"(pierwsze uruchomienie pobiera ~1.8 GB)...")
     model, sr = zaladuj_model(device, args.deepspeed)
-    audio = syntezuj(model, sr, fragmenty, glos, args.jezyk, args.predkosc)
+    print("Analizuję próbkę głosu (raz)...")
+    odcisk = policz_odcisk(model, glos)
 
-    # 5) sklejony sygnał → jeden WAV → konwersja do formatu docelowego
-    tmp_wav = Path(tempfile.mktemp(suffix=".wav"))
-    sf.write(str(tmp_wav), audio, sr)
-    print(f"Zapisuję → {wyjscie}")
-    try:
-        polacz_i_konwertuj([tmp_wav], wyjscie, args.format)
-    finally:
-        tmp_wav.unlink(missing_ok=True)
+    # 4) synteza każdego zadania (model i odcisk już gotowe)
+    wygenerowane: list[Path] = []
+    for idx, (nazwa, tekst, wy) in enumerate(zadania, 1):
+        fragmenty = na_fragmenty((tekst or "").strip())
+        etykieta = f"[{idx}/{len(zadania)}] {nazwa}"
+        if not fragmenty:
+            print(f"{etykieta}: puste źródło — pomijam.")
+            continue
+        print(f"{etykieta}: {len(fragmenty)} fragment(ów) → {wy.name}")
+        audio = syntezuj(model, sr, fragmenty, odcisk, args.jezyk, args.predkosc)
+        zapisz_audio(audio, sr, wy, fmt)
+        wygenerowane.append(wy)
 
-    print(f"Gotowe: {wyjscie}")
-    if args.graj:
-        odtworz(wyjscie)
+    # 5) podsumowanie
+    print(f"\nGotowe: {len(wygenerowane)}/{len(zadania)} plików.")
+    for wy in wygenerowane:
+        print(f"  • {wy}")
+    if args.graj and len(wygenerowane) == 1:
+        odtworz(wygenerowane[0])
+    elif args.graj and len(wygenerowane) > 1:
+        print("(--graj pominięte przy wielu plikach)")
 
 
 if __name__ == "__main__":
