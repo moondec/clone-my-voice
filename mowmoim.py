@@ -169,30 +169,39 @@ def main() -> None:
         except Exception:
             device = "cpu"
     print(f"Ładuję model XTTS-v2 na: {device} (pierwsze uruchomienie pobiera ~1.8 GB)...")
+    import numpy as np
+    import soundfile as sf
     from TTS.api import TTS  # import tutaj — biblioteka ładuje się kilka sekund
     tts = TTS(MODEL).to(device)
+    model = tts.synthesizer.tts_model            # niskopoziomowy obiekt Xtts
+    sr = tts.synthesizer.output_sample_rate      # 24000 Hz
 
-    # 5) synteza fragment po fragmencie
-    tmpdir = Path(tempfile.mkdtemp(prefix="mowmoim_"))
-    wavy = []
+    # 5) "odcisk głosu" liczony RAZ i reużywany dla wszystkich fragmentów.
+    #    (Wcześniej próbka była analizowana od nowa przy każdym fragmencie —
+    #     to była największa niepotrzebna praca przy dłuższych tekstach.)
+    print("Analizuję próbkę głosu (raz)...")
+    gpt_cond_latent, speaker_embedding = model.get_conditioning_latents(audio_path=[str(glos)])
+
+    # 6) synteza fragment po fragmencie, z reużyciem odcisku głosu
+    cisza = np.zeros(int(sr * 0.15), dtype=np.float32)   # krótka pauza między fragmentami
+    kawalki = []
+    for i, frag in enumerate(fragmenty, 1):
+        print(f"  [{i}/{len(fragmenty)}] {frag[:60]}...")
+        out = model.inference(frag, args.jezyk, gpt_cond_latent, speaker_embedding,
+                              speed=args.predkosc, enable_text_splitting=False)
+        kawalki.append(np.asarray(out["wav"], dtype=np.float32))
+        if i < len(fragmenty):
+            kawalki.append(cisza)
+
+    # 7) sklejenie w pamięci → jeden WAV → konwersja do formatu docelowego
+    audio = np.concatenate(kawalki)
+    tmp_wav = Path(tempfile.mktemp(suffix=".wav"))
+    sf.write(str(tmp_wav), audio, sr)
+    print(f"Zapisuję → {wyjscie}")
     try:
-        for i, frag in enumerate(fragmenty, 1):
-            print(f"  [{i}/{len(fragmenty)}] {frag[:60]}...")
-            czesc = tmpdir / f"czesc_{i:04d}.wav"
-            tts.tts_to_file(text=frag, speaker_wav=str(glos), language=args.jezyk,
-                            speed=args.predkosc, file_path=str(czesc), split_sentences=False)
-            wavy.append(czesc)
-
-        # 6) sklejenie + konwersja
-        print(f"Łączę i zapisuję → {wyjscie}")
-        polacz_i_konwertuj(wavy, wyjscie, args.format)
+        polacz_i_konwertuj([tmp_wav], wyjscie, args.format)
     finally:
-        for w in wavy:
-            w.unlink(missing_ok=True)
-        try:
-            tmpdir.rmdir()
-        except OSError:
-            pass
+        tmp_wav.unlink(missing_ok=True)
 
     print(f"Gotowe: {wyjscie}")
     if args.graj and sys.platform == "darwin":
