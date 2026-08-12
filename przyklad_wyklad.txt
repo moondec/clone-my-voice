@@ -1,0 +1,3 @@
+Witam serdecznie na dzisiejszym wykładzie. Dziś porozmawiamy o podstawach uczenia maszynowego.
+Zaczniemy od prostego pytania: czym właściwie jest model? Model to funkcja, która na podstawie danych wejściowych przewiduje wynik.
+Zapamiętajcie tę definicję, bo będziemy do niej wielokrotnie wracać. Dziękuję i zaczynamy!

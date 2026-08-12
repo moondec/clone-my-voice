@@ -1,0 +1,10 @@
+# Środowiska Pythona (regenerowalne, ciężkie)
+venv311/
+venv/
+# Cache Pythona
+__pycache__/
+*.pyc
+# macOS
+.DS_Store
+# Wygenerowane wyjścia audio (przykłady zostawiamy świadomie poniżej)
+*.tmp
