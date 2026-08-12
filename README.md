@@ -123,6 +123,22 @@ Zmienne środowiskowe: `MOWA_PORT` (domyślnie 8000), `MOWA_URZADZENIE` (`auto`/
 MOWA_DEEPSPEED=1 ./serwuj
 ```
 
+**Zatrzymywanie serwera.** Na pierwszym planie zatrzymaj **Ctrl+C**. NIE używaj
+**Ctrl+Z** — to tylko *zawiesza* proces (SIGTSTP), który dalej żyje i trzyma port,
+przez co nie da się uruchomić serwera ponownie. Jeśli port jest zajęty przez
+zawieszony/tłowy serwer:
+
+```bash
+pkill -9 -f serwer.py          # zabij serwer (działa też na zawieszonym procesie)
+# albo: fg   → potem Ctrl+C    (wznów na pierwszy plan i zatrzymaj czysto)
+ss -ltnp | grep :8000          # sprawdź, że port wolny (brak wyniku = OK)
+fuser -k 8000/tcp              # ostateczność: zabij cokolwiek trzyma port 8000
+```
+
+W tle uruchamiasz `./serwuj &`, a zatrzymujesz `pkill -f serwer.py` (lub `kill %1`).
+Inny port: `MOWA_PORT=8010 ./serwuj`. W skrócie: **Ctrl+C = zatrzymaj (zwalnia port)**,
+**Ctrl+Z = zawieś (port zajęty)**.
+
 Interfejs to pliki w `web/` (`index.html` + `style.css` + `app.js`) serwowane przez
 serwer pod adresem `/`. **Nie otwieraj `web/index.html` bezpośrednio** (`file://`) —
 bez działającego serwera zapytania do `/api/...` padają (pokaże się układ, ale bez
