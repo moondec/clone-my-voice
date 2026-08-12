@@ -14,6 +14,7 @@ Przykłady:
 import argparse
 import os
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -121,6 +122,82 @@ def polacz_i_konwertuj(wavy: list[Path], wyjscie: Path, fmt: str) -> None:
         os.unlink(lista_path)
 
 
+# ------------------------------------------------------------------ silnik TTS
+def wykryj_urzadzenie(wybor: str) -> str:
+    """auto → 'cuda' jeśli dostępne, inaczej 'cpu'.
+    Na Apple Silicon celowo NIE wybieramy mps — dla XTTS jest wolniejszy niż cpu."""
+    if wybor != "auto":
+        return wybor
+    try:
+        import torch
+        if torch.cuda.is_available():
+            return "cuda"
+    except Exception:
+        pass
+    return "cpu"
+
+
+def zaladuj_model(device: str, use_deepspeed: bool):
+    """Ładuje XTTS-v2 niskopoziomowo — przenośnie (CPU/CUDA/MPS), z opcją DeepSpeed.
+    Zwraca (model, sample_rate). DeepSpeed działa tylko na CUDA; w razie braku
+    pakietu cichy fallback do zwykłego ładowania."""
+    from TTS.utils.manage import ModelManager
+    from TTS.tts.configs.xtts_config import XttsConfig
+    from TTS.tts.models.xtts import Xtts
+
+    model_dir, config_path, _ = ModelManager().download_model(MODEL)
+    config = XttsConfig()
+    config.load_json(str(config_path or Path(model_dir) / "config.json"))
+    model = Xtts.init_from_config(config)
+
+    ds = bool(use_deepspeed and device == "cuda")
+    try:
+        model.load_checkpoint(config, checkpoint_dir=str(model_dir), use_deepspeed=ds, eval=True)
+    except Exception as e:
+        if ds:
+            print(f"  Uwaga: DeepSpeed niedostępny ({e}); ładuję bez DeepSpeed.")
+            model.load_checkpoint(config, checkpoint_dir=str(model_dir), use_deepspeed=False, eval=True)
+        else:
+            raise
+
+    if device == "cuda":
+        model.cuda()
+    elif device == "mps":
+        model.to("mps")
+    sr = int(getattr(config.audio, "output_sample_rate", 24000))
+    return model, sr
+
+
+def syntezuj(model, sr: int, fragmenty: list[str], glos: Path, jezyk: str, predkosc: float):
+    """Zamienia listę fragmentów tekstu na jeden sygnał audio (numpy float32).
+    Odcisk głosu liczony RAZ i reużywany dla wszystkich fragmentów."""
+    import numpy as np
+    print("Analizuję próbkę głosu (raz)...")
+    gpt_cond_latent, speaker_embedding = model.get_conditioning_latents(audio_path=[str(glos)])
+    cisza = np.zeros(int(sr * 0.15), dtype=np.float32)   # krótka pauza między fragmentami
+    kawalki = []
+    for i, frag in enumerate(fragmenty, 1):
+        print(f"  [{i}/{len(fragmenty)}] {frag[:60]}...")
+        out = model.inference(frag, jezyk, gpt_cond_latent, speaker_embedding,
+                              speed=predkosc, enable_text_splitting=False)
+        kawalki.append(np.asarray(out["wav"], dtype=np.float32))
+        if i < len(fragmenty):
+            kawalki.append(cisza)
+    return np.concatenate(kawalki)
+
+
+def odtworz(sciezka: Path) -> None:
+    """Odtwarza plik — przenośnie: afplay (mac), ffplay/aplay/paplay (Linux)."""
+    if sys.platform == "darwin":
+        subprocess.run(["afplay", str(sciezka)])
+        return
+    for gracz in (["ffplay", "-nodisp", "-autoexit", "-loglevel", "quiet"], ["aplay"], ["paplay"]):
+        if shutil.which(gracz[0]):
+            subprocess.run(gracz + [str(sciezka)])
+            return
+    print("(Brak odtwarzacza audio — pomijam --graj)")
+
+
 # ------------------------------------------------------------------ main
 def main() -> None:
     p = argparse.ArgumentParser(
@@ -135,9 +212,11 @@ def main() -> None:
     p.add_argument("-g", "--glos", default=str(DOMYSLNY_GLOS), help="próbka głosu referencyjnego (.wav)")
     p.add_argument("-j", "--jezyk", default="pl", help="język tekstu (domyślnie pl)")
     p.add_argument("--predkosc", type=float, default=1.0, help="tempo mowy (1.0 = normalne)")
-    p.add_argument("--urzadzenie", choices=["cpu", "mps", "auto"], default="cpu",
-                   help="urządzenie obliczeniowe (domyślnie cpu — najstabilniejsze na Mac)")
-    p.add_argument("--graj", action="store_true", help="odtwórz wynik po wygenerowaniu (afplay)")
+    p.add_argument("--urzadzenie", choices=["auto", "cpu", "cuda", "mps"], default="auto",
+                   help="urządzenie: auto (cuda→cpu), cpu, cuda (Linux/NVIDIA), mps (Mac, wolniejszy)")
+    p.add_argument("--deepspeed", action="store_true",
+                   help="użyj DeepSpeed — tylko CUDA/Linux, ~2x szybciej (wymaga pakietu deepspeed)")
+    p.add_argument("--graj", action="store_true", help="odtwórz wynik po wygenerowaniu")
     args = p.parse_args()
 
     # 1) tekst
@@ -160,41 +239,15 @@ def main() -> None:
     else:
         wyjscie = Path.cwd() / f"mowa.{args.format}"
 
-    # 4) model
-    device = args.urzadzenie
-    if device == "auto":
-        try:
-            import torch
-            device = "mps" if torch.backends.mps.is_available() else "cpu"
-        except Exception:
-            device = "cpu"
-    print(f"Ładuję model XTTS-v2 na: {device} (pierwsze uruchomienie pobiera ~1.8 GB)...")
-    import numpy as np
+    # 4) model + synteza
+    device = wykryj_urzadzenie(args.urzadzenie)
+    ds_info = " + DeepSpeed" if (args.deepspeed and device == "cuda") else ""
+    print(f"Ładuję model XTTS-v2 na: {device}{ds_info} (pierwsze uruchomienie pobiera ~1.8 GB)...")
     import soundfile as sf
-    from TTS.api import TTS  # import tutaj — biblioteka ładuje się kilka sekund
-    tts = TTS(MODEL).to(device)
-    model = tts.synthesizer.tts_model            # niskopoziomowy obiekt Xtts
-    sr = tts.synthesizer.output_sample_rate      # 24000 Hz
+    model, sr = zaladuj_model(device, args.deepspeed)
+    audio = syntezuj(model, sr, fragmenty, glos, args.jezyk, args.predkosc)
 
-    # 5) "odcisk głosu" liczony RAZ i reużywany dla wszystkich fragmentów.
-    #    (Wcześniej próbka była analizowana od nowa przy każdym fragmencie —
-    #     to była największa niepotrzebna praca przy dłuższych tekstach.)
-    print("Analizuję próbkę głosu (raz)...")
-    gpt_cond_latent, speaker_embedding = model.get_conditioning_latents(audio_path=[str(glos)])
-
-    # 6) synteza fragment po fragmencie, z reużyciem odcisku głosu
-    cisza = np.zeros(int(sr * 0.15), dtype=np.float32)   # krótka pauza między fragmentami
-    kawalki = []
-    for i, frag in enumerate(fragmenty, 1):
-        print(f"  [{i}/{len(fragmenty)}] {frag[:60]}...")
-        out = model.inference(frag, args.jezyk, gpt_cond_latent, speaker_embedding,
-                              speed=args.predkosc, enable_text_splitting=False)
-        kawalki.append(np.asarray(out["wav"], dtype=np.float32))
-        if i < len(fragmenty):
-            kawalki.append(cisza)
-
-    # 7) sklejenie w pamięci → jeden WAV → konwersja do formatu docelowego
-    audio = np.concatenate(kawalki)
+    # 5) sklejony sygnał → jeden WAV → konwersja do formatu docelowego
     tmp_wav = Path(tempfile.mktemp(suffix=".wav"))
     sf.write(str(tmp_wav), audio, sr)
     print(f"Zapisuję → {wyjscie}")
@@ -204,8 +257,8 @@ def main() -> None:
         tmp_wav.unlink(missing_ok=True)
 
     print(f"Gotowe: {wyjscie}")
-    if args.graj and sys.platform == "darwin":
-        subprocess.run(["afplay", str(wyjscie)])
+    if args.graj:
+        odtworz(wyjscie)
 
 
 if __name__ == "__main__":

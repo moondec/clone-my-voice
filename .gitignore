@@ -1,4 +1,5 @@
-# Środowiska Pythona (regenerowalne, ciężkie)
+# Środowiska Pythona (regenerowalne, ciężkie — odtwarzane przez ./instaluj.sh)
+.venv/
 venv311/
 venv/
 # Cache Pythona
@@ -6,5 +7,6 @@ __pycache__/
 *.pyc
 # macOS
 .DS_Store
-# Wygenerowane wyjścia audio (przykłady zostawiamy świadomie poniżej)
+# Pliki robocze i tymczasowe
 *.tmp
+_*

@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# mow — uruchamia narzędzie mowmoim w środowisku .venv.
+# Przenośne (macOS / Linux / WSL2). Wszystkie argumenty przekazywane dalej.
+# Przykłady:
+#   ./mow wyklad.txt
+#   ./mow notatka.docx -f wav -o komentarz.wav
+#   ./mow --schowek --graj
+#   ./mow --tekst "Cześć" -o test.mp3
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PY="$DIR/.venv/bin/python"
+if [ ! -x "$PY" ]; then
+  echo "Brak środowiska .venv — uruchom najpierw:  ./instaluj.sh" >&2
+  exit 1
+fi
+exec "$PY" "$DIR/mowmoim.py" "$@"
