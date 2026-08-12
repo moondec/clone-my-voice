@@ -186,7 +186,8 @@ Skrypt normalizuje głośność, czyści pasmo i zapisuje `glos/Marek_ref.wav`
 | `torchcodec ... required` | torch ≥2.9 wymaga `torchcodec` (instalator go dodaje) |
 | pip **segfault** na macOS (`process has forked`) | ustaw `export no_proxy='*'` (instalator to robi) |
 | `bad interpreter: .../venv311/...` | używaj `python -m pip`, nie skryptu `bin/pip` (dotyczy przenoszonego venv) |
-| `Wymagany Python 3.9–3.12` (host ma tylko 3.13) | Ubuntu/WSL: `sudo apt install python3.12 python3.12-venv python3.12-dev` (lub deadsnakes `python3.11`); macOS: `brew install python@3.11`. Potem `./instaluj.sh` ponownie |
+| `Nie znaleziono Pythona 3.9–3.12` | Ubuntu 22.04+/WSL: `sudo apt install python3.12 python3.12-venv python3.12-dev`; **Ubuntu 20.04**: deadsnakes → `sudo apt install python3.11 python3.11-venv python3.11-dev`; macOS: `brew install python@3.11`. Potem `./instaluj.sh` ponownie |
+| deadsnakes dodane, ale `apt` „nie widzi" `python3.11` | apt nie pobrał indeksu PPA — wyczyść cache: `sudo rm -rf /var/lib/apt/lists/* && sudo apt update`, potem instaluj |
 | DeepSpeed nie instaluje się na Windows | użyj **WSL2**, nie natywnego Windows |
 
 ---

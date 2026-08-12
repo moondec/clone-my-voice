@@ -83,21 +83,23 @@ znajdz_python() {
   return 1
 }
 PY="$(znajdz_python || true)"
-# Brak Pythona ≤3.12 (host ma zwykle tylko 3.13) — na Linuksie spróbuj doinstalować.
+# Brak Pythona w zakresie — na Linuksie spróbuj doinstalować (3.12 z universe, potem 3.11).
 if [ -z "$PY" ] && [ "$PLATFORMA" = "linux" ] && command -v apt-get >/dev/null 2>&1; then
-  warn "Brak Pythona 3.9–3.12 — próbuję zainstalować python3.12 (apt/universe)..."
-  sudo apt-get install -y -qq python3.12 python3.12-venv python3.12-dev 2>/dev/null || true
+  warn "Brak Pythona 3.9–3.12 — próbuję doinstalować (apt)..."
+  sudo apt-get install -y -qq python3.12 python3.12-venv python3.12-dev 2>/dev/null \
+    || sudo apt-get install -y -qq python3.11 python3.11-venv python3.11-dev 2>/dev/null || true
   PY="$(znajdz_python || true)"
 fi
 if [ -z "$PY" ]; then
-  err "Wymagany Python 3.9–3.12 (coqui-tts nie wspiera 3.13; masz zapewne tylko 3.13)."
+  err "Nie znaleziono Pythona 3.9–3.12 (masz: $(python3 --version 2>&1 || echo brak); coqui-tts nie wspiera 3.13)."
   if [ "$PLATFORMA" = "macos" ]; then
     err "Napraw:  brew install python@3.11"
   else
-    err "Napraw (Ubuntu/WSL) — jedno z:"
-    err "  sudo apt install -y python3.12 python3.12-venv python3.12-dev"
-    err "  # jeśli python3.12 nie ma w repo, użyj deadsnakes (python3.11):"
-    err "  sudo add-apt-repository -y ppa:deadsnakes/ppa && sudo apt update"
+    err "Napraw (Ubuntu/WSL):"
+    err "  sudo apt install -y python3.12 python3.12-venv python3.12-dev   # gdy jest w repo"
+    err "  # starsze wydania (np. 20.04) — deadsnakes; jeśli apt 'nie widzi' pakietu, wyczyść cache:"
+    err "  sudo add-apt-repository -y ppa:deadsnakes/ppa"
+    err "  sudo rm -rf /var/lib/apt/lists/* && sudo apt update"
     err "  sudo apt install -y python3.11 python3.11-venv python3.11-dev"
   fi
   err "Następnie uruchom ./instaluj.sh ponownie."
