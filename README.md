@@ -186,7 +186,7 @@ Skrypt normalizuje głośność, czyści pasmo i zapisuje `glos/Marek_ref.wav`
 | `torchcodec ... required` | torch ≥2.9 wymaga `torchcodec` (instalator go dodaje) |
 | pip **segfault** na macOS (`process has forked`) | ustaw `export no_proxy='*'` (instalator to robi) |
 | `bad interpreter: .../venv311/...` | używaj `python -m pip`, nie skryptu `bin/pip` (dotyczy przenoszonego venv) |
-| Python 3.13 | coqui-tts go nie wspiera — użyj 3.11/3.12 |
+| `Wymagany Python 3.9–3.12` (host ma tylko 3.13) | Ubuntu/WSL: `sudo apt install python3.12 python3.12-venv python3.12-dev` (lub deadsnakes `python3.11`); macOS: `brew install python@3.11`. Potem `./instaluj.sh` ponownie |
 | DeepSpeed nie instaluje się na Windows | użyj **WSL2**, nie natywnego Windows |
 
 ---
