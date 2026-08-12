@@ -128,5 +128,5 @@ except Exception:
     print("  deepspeed: brak (opcjonalny, tylko CUDA)")
 PY
 
-chmod +x "$DIR/mow" "$DIR/przygotuj_glos.sh" 2>/dev/null || true
+chmod +x "$DIR/mow" "$DIR/serwuj" "$DIR/przygotuj_glos.sh" 2>/dev/null || true
 log "GOTOWE. Przykład:  ./mow --tekst \"Cześć, to działa\" -o test.mp3 --graj"

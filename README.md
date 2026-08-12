@@ -142,8 +142,12 @@ Aby uruchomić na nowej maszynie:
 
 1. Skopiuj katalog projektu (lub `git clone`). **Nie** kopiuj `.venv/` —
    jest platformowo-zależne; zostanie odtworzone.
-2. Uruchom `./instaluj.sh`.
-3. Gotowe: `./mow wyklad.txt`.
+2. Nadaj skryptom prawa wykonywania (kopiowanie/rozpakowanie potrafi je zgubić):
+   ```bash
+   chmod +x instaluj.sh mow serwuj przygotuj_glos.sh
+   ```
+3. Uruchom `./instaluj.sh`.
+4. Gotowe: `./mow wyklad.txt` albo `./serwuj`.
 
 Model XTTS-v2 (~1,7 GB) pobierze się automatycznie przy pierwszym uruchomieniu do
 `~/Library/Application Support/tts` (macOS) lub `~/.local/share/tts` (Linux).
