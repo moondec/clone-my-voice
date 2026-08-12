@@ -155,6 +155,11 @@ def zaladuj_model(device: str, use_deepspeed: bool):
     model = Xtts.init_from_config(config)
 
     ds = bool(use_deepspeed and device == "cuda")
+    # DeepSpeed potrzebuje CUDA toolkit (nvcc/CUDA_HOME) do kompilacji kerneli.
+    # Bez niego pomijamy go OD RAZU — inaczej próba + fallback ładują model dwukrotnie.
+    if ds and not (os.environ.get("CUDA_HOME") or shutil.which("nvcc")):
+        print("  DeepSpeed pominięty: brak CUDA toolkit (nvcc/CUDA_HOME) — używam zwykłego CUDA.")
+        ds = False
     try:
         model.load_checkpoint(config, checkpoint_dir=str(model_dir), use_deepspeed=ds, eval=True)
     except Exception as e:
