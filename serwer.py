@@ -83,11 +83,16 @@ def _odcisk(nazwa: str):
     return _ODCISKI[sciezka.stem][1]
 
 
-def _normalizuj_do_wav(src: Path, cel: Path) -> None:
-    """Normalizacja próbki jak w przygotuj_glos.sh: 24 kHz mono, loudnorm, filtr pasma."""
+def _normalizuj_do_wav(src: Path, cel: Path, start: float = 0.0, koniec: float = 0.0) -> None:
+    """Normalizacja próbki jak w przygotuj_glos.sh: 24 kHz mono, loudnorm, filtr pasma.
+    Opcjonalne przycięcie: [start, koniec] w sekundach (koniec=0 → do końca nagrania)."""
     cel.parent.mkdir(parents=True, exist_ok=True)
+    # -ss/-t jako opcje WYJŚCIA (po -i) → dokładne, próbka-w-próbkę przycięcie.
+    trim = []
+    if koniec and koniec > start >= 0:
+        trim = ["-ss", f"{start:.3f}", "-t", f"{koniec - start:.3f}"]
     subprocess.run(
-        ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", str(src),
+        ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", str(src), *trim,
          "-af", "loudnorm=I=-18:TP=-2:LRA=11,highpass=f=70,lowpass=f=8500",
          "-ar", "24000", "-ac", "1", str(cel)],
         check=True,
@@ -111,15 +116,17 @@ def get_profile():
 
 
 @app.post("/api/profile")
-def dodaj_profil(nazwa: str = Form(...), plik: UploadFile = File(...)):
-    """Tworzy/aktualizuje profil głosowy z przesłanego nagrania (dowolny format audio)."""
+def dodaj_profil(nazwa: str = Form(...), plik: UploadFile = File(...),
+                 start: float = Form(0.0), koniec: float = Form(0.0)):
+    """Tworzy/aktualizuje profil głosowy z przesłanego nagrania (dowolny format audio).
+    Opcjonalne przycięcie start/koniec (sekundy) — obcina ciszę/trzaski z końców."""
     cel = _profil_sciezka(nazwa)
     suf = Path(plik.filename or "x").suffix or ".bin"
     with tempfile.NamedTemporaryFile(delete=False, suffix=suf) as tmp:
         tmp.write(plik.file.read())
         tmp_path = tmp.name
     try:
-        _normalizuj_do_wav(Path(tmp_path), cel)
+        _normalizuj_do_wav(Path(tmp_path), cel, start, koniec)
     except subprocess.CalledProcessError:
         raise HTTPException(400, "Nie udało się przetworzyć nagrania (zły format audio?)")
     finally:

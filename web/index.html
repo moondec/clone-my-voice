@@ -80,6 +80,23 @@
             <span class="timecode" id="recTime">00:00</span>
           </div>
           <audio id="recPreview" controls hidden></audio>
+
+          <div class="trim" id="trim" hidden>
+            <div class="trim-lab">Przytnij ciszę i trzaski z początku i końca — przesuń uchwyty:</div>
+            <div class="trim-wrap" id="trimWrap">
+              <canvas id="trimFala" class="trim-fala"></canvas>
+              <div class="trim-shade" id="shadeL"></div>
+              <div class="trim-shade" id="shadeR"></div>
+              <div class="trim-playhead" id="trimPlay"></div>
+              <div class="trim-handle" id="handleL"></div>
+              <div class="trim-handle" id="handleR"></div>
+            </div>
+            <div class="trim-row">
+              <button class="btn sm" id="trimPlayBtn"><span class="i">▶</span> zaznaczenie</button>
+              <span class="timecode" id="trimInfo">0.00–0.00 s</span>
+            </div>
+          </div>
+
           <div class="rec-save" id="recSave" hidden>
             <input type="text" id="recNazwa" maxlength="40" placeholder="nazwa profilu, np. Marek_studio">
             <button class="btn primary sm" id="zapiszProfil">ZAPISZ</button>

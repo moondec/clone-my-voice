@@ -113,8 +113,9 @@ Model ładuje się **raz** i pozostaje „ciepły" — kolejne generacje ruszaj�
 ```
 
 GUI oferuje: pole tekstu i wczytywanie `.txt`/`.docx`, **przełącznik profili głosowych**,
-**nagrywarkę próbki** (tworzy nowy profil z mikrofonu), wizualizację fali z odtwarzaczem,
-wybór formatu i tempa oraz pobieranie wyniku.
+**nagrywarkę próbki** z **edytorem przycięcia** (przesuwane uchwyty początku/końca na fali
+próbki — obcina ciszę i trzaski przed zapisem profilu; cięcie wykonuje ffmpeg dokładnie),
+wizualizację fali z odtwarzaczem, wybór formatu i tempa oraz pobieranie wyniku.
 
 Zmienne środowiskowe: `MOWA_PORT` (domyślnie 8000), `MOWA_URZADZENIE` (`auto`/`cpu`/`cuda`/`mps`),
 `MOWA_DEEPSPEED=1` (CUDA). Przykład na maszynie z RTX:

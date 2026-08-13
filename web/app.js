@@ -15,12 +15,18 @@ const el = {
   profilList:$('#profilList'),
   meter:$('#meter'), recBtn:$('#recBtn'), recLabel:$('#recLabel'), recTime:$('#recTime'),
   recPreview:$('#recPreview'), recSave:$('#recSave'), recNazwa:$('#recNazwa'), zapiszProfil:$('#zapiszProfil'),
+  trim:$('#trim'), trimWrap:$('#trimWrap'), trimFala:$('#trimFala'), shadeL:$('#shadeL'), shadeR:$('#shadeR'),
+  handleL:$('#handleL'), handleR:$('#handleR'), trimPlay:$('#trimPlay'), trimPlayBtn:$('#trimPlayBtn'),
+  trimInfo:$('#trimInfo'),
   toast:$('#toast'),
 };
 
 let aktywnyProfil = null;
 let wczytanyPlik = null;      // File .docx (parsowany po stronie serwera)
 let falaPeaks = null;         // szczyty do rysowania fali
+let recDuration = 0;          // długość nagranej próbki (s)
+let trimL = 0, trimR = 1;     // pozycje uchwytów przycięcia (0..1)
+let recPeaks = null;          // szczyty fali próbki
 
 /* ── pomocnicze ───────────────────────────────────────────────── */
 function toast(msg, typ='') {
@@ -237,7 +243,10 @@ el.audio.ontimeupdate = () => {
   malujFale(p);
   el.tc.textContent = `${czas(el.audio.currentTime)} / ${czas(el.audio.duration)}`;
 };
-window.addEventListener('resize', () => malujFale(el.audio.currentTime / (el.audio.duration || 1)));
+window.addEventListener('resize', () => {
+  malujFale(el.audio.currentTime / (el.audio.duration || 1));
+  if (!el.trim.hidden) rysujTrimFale();
+});
 
 /* ── nagrywarka próbki głosu ──────────────────────────────────── */
 let mediaRec = null, recChunks = [], recStream = null, recBlob = null;
@@ -258,11 +267,12 @@ async function startRec() {
     recBlob = new Blob(recChunks, { type: mediaRec.mimeType || 'audio/webm' });
     el.recPreview.src = URL.createObjectURL(recBlob); el.recPreview.hidden = false;
     el.recSave.hidden = false;
+    pokazEdytorPrzyciecia();
   };
   mediaRec.start();
 
   el.recBtn.classList.add('on'); el.recLabel.textContent = 'STOP';
-  el.recPreview.hidden = true; el.recSave.hidden = true;
+  el.recPreview.hidden = true; el.recSave.hidden = true; el.trim.hidden = true;
   recStart = Date.now();
   recTimerId = setInterval(() => el.recTime.textContent = czas((Date.now() - recStart) / 1000), 200);
   startMeter();
@@ -298,6 +308,91 @@ function stopMeter() {
   recAC?.close(); recAC = null;
   const { x, w, h } = ctx2d(el.meter); x.clearRect(0, 0, w, h);
 }
+
+/* ── edytor przycięcia próbki ─────────────────────────────────── */
+async function pokazEdytorPrzyciecia() {
+  recPeaks = null; recDuration = 0;
+  try {
+    const audio = await audioCtx().decodeAudioData(await recBlob.arrayBuffer());
+    recDuration = audio.duration;
+    const data = audio.getChannelData(0);
+    const w = el.trimFala.getBoundingClientRect().width || 300;
+    const slupki = Math.max(60, Math.floor(w / 2));
+    const krok = Math.max(1, Math.floor(data.length / slupki));
+    recPeaks = [];
+    for (let i = 0; i < slupki; i++) {
+      let mx = 0;
+      for (let j = 0; j < krok; j++) { const v = Math.abs(data[i * krok + j] || 0); if (v > mx) mx = v; }
+      recPeaks.push(mx);
+    }
+  } catch (e) {
+    console.warn('trim decode:', e);
+    recDuration = el.recPreview.duration || 0;
+  }
+  trimL = 0; trimR = 1;
+  el.trim.hidden = false;
+  rysujTrimFale();
+  updatePrzyciecie();
+}
+
+function rysujTrimFale() {
+  const { x, w, h } = ctx2d(el.trimFala);
+  x.clearRect(0, 0, w, h);
+  if (!recPeaks) return;
+  const mid = h / 2, bw = w / recPeaks.length;
+  x.fillStyle = '#66788a';
+  recPeaks.forEach((p, i) => {
+    const bh = Math.max(2, p * (h * 0.8));
+    x.fillRect(i * bw + bw * 0.15, mid - bh / 2, Math.max(1, bw * 0.7), bh);
+  });
+}
+
+function updatePrzyciecie() {
+  el.handleL.style.left = (trimL * 100) + '%';
+  el.handleR.style.left = (trimR * 100) + '%';
+  el.shadeL.style.width = (trimL * 100) + '%';
+  el.shadeR.style.width = ((1 - trimR) * 100) + '%';
+  const a = trimL * recDuration, b = trimR * recDuration;
+  el.trimInfo.textContent = `${a.toFixed(2)}–${b.toFixed(2)} s  (${(b - a).toFixed(2)} s)`;
+}
+
+function przeciagUchwyt(handle, ktory) {
+  handle.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    const rect = el.trimWrap.getBoundingClientRect();
+    const move = (ev) => {
+      let f = Math.max(0, Math.min(1, (ev.clientX - rect.left) / rect.width));
+      const min = 0.02;
+      if (ktory === 'L') trimL = Math.min(f, trimR - min);
+      else trimR = Math.max(f, trimL + min);
+      updatePrzyciecie();
+    };
+    const up = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  });
+}
+przeciagUchwyt(el.handleL, 'L');
+przeciagUchwyt(el.handleR, 'R');
+
+el.trimPlayBtn.onclick = () => {
+  if (!recDuration) return;
+  const b = trimR * recDuration;
+  el.recPreview.currentTime = trimL * recDuration;
+  el.recPreview.play();
+  const tick = () => {
+    if (el.recPreview.paused || el.recPreview.currentTime >= b) {
+      el.recPreview.pause();
+      el.recPreview.removeEventListener('timeupdate', tick);
+      el.trimPlay.style.opacity = 0;
+      return;
+    }
+    el.trimPlay.style.left = (el.recPreview.currentTime / recDuration * 100) + '%';
+    el.trimPlay.style.opacity = 1;
+  };
+  el.recPreview.addEventListener('timeupdate', tick);
+};
+
 el.zapiszProfil.onclick = async () => {
   const nazwa = el.recNazwa.value.trim();
   if (!nazwa) return toast('Podaj nazwę profilu', 'err');
@@ -305,13 +400,18 @@ el.zapiszProfil.onclick = async () => {
   const fd = new FormData();
   fd.append('nazwa', nazwa);
   fd.append('plik', recBlob, 'probka.webm');
+  if (recDuration) {
+    fd.append('start', (trimL * recDuration).toFixed(3));
+    fd.append('koniec', (trimR * recDuration).toFixed(3));
+  }
   el.zapiszProfil.disabled = true;
   try {
     const r = await fetch('/api/profile', { method: 'POST', body: fd });
     if (!r.ok) { const t = await r.json().catch(() => ({})); throw new Error(t.detail || ('HTTP ' + r.status)); }
     const d = await r.json();
     renderProfile(d.profile); ustawProfil(d.profil);
-    el.recSave.hidden = true; el.recPreview.hidden = true; el.recNazwa.value = ''; el.recTime.textContent = '00:00';
+    el.recSave.hidden = true; el.recPreview.hidden = true; el.trim.hidden = true;
+    el.recNazwa.value = ''; el.recTime.textContent = '00:00';
     toast('Zapisano profil: ' + d.profil, 'ok');
   } catch (e) {
     toast('Błąd zapisu profilu: ' + e.message, 'err');

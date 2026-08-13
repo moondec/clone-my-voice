@@ -160,6 +160,28 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none; width:15px; hei
 #recPreview{width:100%; margin-top:10px; height:34px}
 .hint{font-size:11.5px; color:var(--txt-dim); margin-top:10px; line-height:1.5}
 
+/* ── edytor przycięcia próbki ─────────────────────────────────── */
+.trim{margin-top:12px}
+.trim-lab{font-size:11.5px; color:var(--txt-dim); margin-bottom:8px; line-height:1.4}
+.trim-wrap{position:relative; height:72px; background:var(--panel2); border:1px solid var(--line);
+  border-radius:8px; overflow:hidden; touch-action:none; user-select:none}
+.trim-fala{display:block; width:100%; height:72px}
+.trim-shade{position:absolute; top:0; bottom:0; background:rgba(9,11,14,.68); pointer-events:none}
+#shadeL{left:0; width:0}
+#shadeR{right:0; width:0}
+.trim-handle{position:absolute; top:0; bottom:0; width:16px; cursor:ew-resize; z-index:3}
+#handleL{margin-left:0}          /* lewa krawędź na pozycji cięcia — zawsze widoczny */
+#handleR{margin-left:-16px}      /* prawa krawędź na pozycji cięcia */
+.trim-handle::before{content:""; position:absolute; top:0; bottom:0; width:2px;
+  background:var(--amber); box-shadow:0 0 8px var(--amber)}
+#handleL::before{left:0} #handleR::before{right:0}
+.trim-handle::after{content:""; position:absolute; top:calc(50% - 12px); width:12px; height:24px;
+  border-radius:3px; background:var(--amber); box-shadow:0 0 10px -2px var(--amber)}
+#handleL::after{left:1px} #handleR::after{right:1px}
+.trim-playhead{position:absolute; top:0; bottom:0; width:1.5px; background:var(--cyan); opacity:0;
+  pointer-events:none; z-index:2}
+.trim-row{display:flex; align-items:center; gap:12px; margin-top:9px}
+
 /* ── stopka ──────────────────────────────────────────────────── */
 .footer{display:flex; align-items:center; gap:10px; font-family:var(--mono); font-size:11px;
   color:#5a6472; letter-spacing:.08em; padding:2px 2px 4px}

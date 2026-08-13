@@ -1,0 +1,28 @@
+INFO:     Started server process [42260]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+[serwer] http://127.0.0.1:8000  (Ctrl+C aby zatrzymać)
+INFO:     127.0.0.1:63105 - "GET /api/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63106 - "POST /api/profile HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63237 - "DELETE /api/profile/test_trim HTTP/1.1" 200 OK
+[serwer] Ładuję model XTTS-v2 na: cpu...
+[serwer] Model gotowy.
+    [1/1] rozgrzewka...
+INFO:     127.0.0.1:63238 - "POST /api/mowa HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63441 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63441 - "GET /style.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63443 - "GET /app.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63443 - "GET /api/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63443 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+    [1/1] Raz, dwa, trzy, cztery, pięć. To jest testowa próbka gł...
+INFO:     127.0.0.1:63476 - "POST /api/mowa HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63790 - "POST /api/profile HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64260 - "DELETE /api/profile/test_ui_trim HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64291 - "GET / HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:64291 - "GET /style.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64293 - "GET /app.js HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:64291 - "GET /api/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64291 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+    [1/1] Testowa próbka do sprawdzenia uchwytów przycięcia na kr...
+INFO:     127.0.0.1:64324 - "POST /api/mowa HTTP/1.1" 200 OK
