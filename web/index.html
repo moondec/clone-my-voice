@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Marek_voice — Studio</title>
+  <title>Clone-my-voice — Studio</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -12,12 +12,15 @@
     <header class="topbar">
       <div class="brand">
         <span class="logo">◈</span>
-        <span class="title">MAREK_VOICE</span>
+        <span class="title">Clone-my-voice</span>
         <span class="sub">STUDIO</span>
       </div>
-      <div class="status" id="status" title="stan silnika">
-        <span class="led" id="led"></span>
-        <span class="status-text" id="statusText">łączenie…</span>
+      <div class="topbar-right">
+        <button class="theme-btn" id="themeBtn" title="przełącz motyw">☾</button>
+        <div class="status" id="status" title="stan silnika">
+          <span class="led" id="led"></span>
+          <span class="status-text" id="statusText">łączenie…</span>
+        </div>
       </div>
     </header>
 
@@ -37,6 +40,9 @@
         <div class="controls">
           <label class="ctl">GŁOS
             <select id="profilSel"></select>
+          </label>
+          <label class="ctl">JĘZYK
+            <select id="jezykSel"></select>
           </label>
           <label class="ctl">FORMAT
             <select id="formatSel"></select>

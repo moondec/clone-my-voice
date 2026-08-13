@@ -1,8 +1,9 @@
-# Marek_voice — tekst → mowa w moim głosie
+# Clone-my-voice — tekst → mowa w sklonowanym głosie
 
 Narzędzie zamieniające tekst (`.txt`, `.docx` lub schowek systemowy) na plik
-audio (`mp3`, `wav`, `m4a`, `ogg`, `flac`) czytany moim **sklonowanym głosem**.
-Działa **lokalnie i offline** na modelu Coqui **XTTS-v2**. Dwa sposoby użycia:
+audio (`mp3`, `wav`, `m4a`, `ogg`, `flac`) czytany **sklonowanym głosem**.
+Działa **lokalnie i offline** na modelu Coqui **XTTS-v2** (17 języków, klonowanie
+międzyjęzykowe — próbka może być w jednym języku, synteza w innym). Dwa sposoby użycia:
 
 - **CLI** — `./mow` (pojedynczo, wsadowo, ze schowka); zobacz sekcję 3.
 - **Serwer + GUI** — `./serwuj`, potem przeglądarka; interfejs w stylu studia
@@ -112,10 +113,13 @@ Model ładuje się **raz** i pozostaje „ciepły" — kolejne generacje ruszaj�
 ./serwuj                # uruchamia serwer, potem otwórz http://127.0.0.1:8000
 ```
 
-GUI oferuje: pole tekstu i wczytywanie `.txt`/`.docx`, **przełącznik profili głosowych**,
+GUI oferuje: pole tekstu i wczytywanie `.txt`/`.docx`, **przełącznik profili głosowych**
+z odsłuchem każdej zapisanej próbki (porównanie i usuwanie), **wybór języka docelowego**
+(17 języków; próbka NIE musi być w języku docelowym — klonowanie międzyjęzykowe),
 **nagrywarkę próbki** z **edytorem przycięcia** (przesuwane uchwyty początku/końca na fali
 próbki — obcina ciszę i trzaski przed zapisem profilu; cięcie wykonuje ffmpeg dokładnie),
-wizualizację fali z odtwarzaczem, wybór formatu i tempa oraz pobieranie wyniku.
+wizualizację fali z odtwarzaczem, wybór formatu i tempa, **motyw jasny/ciemny** oraz
+pobieranie wyniku.
 
 Zmienne środowiskowe: `MOWA_PORT` (domyślnie 8000), `MOWA_URZADZENIE` (`auto`/`cpu`/`cuda`/`mps`),
 `MOWA_DEEPSPEED=1` (CUDA). Przykład na maszynie z RTX:

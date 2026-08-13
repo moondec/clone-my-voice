@@ -99,7 +99,12 @@ def _normalizuj_do_wav(src: Path, cel: Path, start: float = 0.0, koniec: float =
     )
 
 
-app = FastAPI(title="Marek_voice — studio")
+# Bezpieczne limity długości fragmentu wg języka (XTTS-v2 ma różne limity znaków).
+LIMITY = {"pl": 200, "en": 230, "de": 230, "fr": 240, "es": 220, "it": 200, "pt": 190,
+          "nl": 230, "cs": 180, "ru": 170, "tr": 210, "ar": 150, "zh-cn": 78, "ja": 66,
+          "ko": 90, "hu": 200, "hi": 140}
+
+app = FastAPI(title="Clone-my-voice — studio")
 
 
 @app.get("/api/status")
@@ -172,7 +177,7 @@ def mowa(text: str = Form(""), profil: str = Form(...), format: str = Form("mp3"
             text = m.tekst_z_pliku(Path(tmp_path))
         finally:
             os.unlink(tmp_path)
-    fragmenty = m.na_fragmenty((text or "").strip())
+    fragmenty = m.na_fragmenty((text or "").strip(), LIMITY.get(jezyk, 200))
     if not fragmenty:
         raise HTTPException(400, "Brak tekstu do syntezy")
     with _LOCK:

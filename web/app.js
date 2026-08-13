@@ -8,8 +8,8 @@ const el = {
   tekst:$('#tekst'), licznik:$('#licznik'),
   dropzone:$('#dropzone'), plikInput:$('#plikInput'), wybierzPlik:$('#wybierzPlik'),
   plikChip:$('#plikChip'), dropLabel:$('#dropLabel'),
-  profilSel:$('#profilSel'), formatSel:$('#formatSel'), tempo:$('#tempo'), tempoVal:$('#tempoVal'),
-  generuj:$('#generuj'),
+  profilSel:$('#profilSel'), jezykSel:$('#jezykSel'), formatSel:$('#formatSel'),
+  tempo:$('#tempo'), tempoVal:$('#tempoVal'), generuj:$('#generuj'), themeBtn:$('#themeBtn'),
   fala:$('#fala'), render:$('#render'), outMeta:$('#outMeta'),
   play:$('#play'), tc:$('#tc'), pobierz:$('#pobierz'), audio:$('#audio'),
   profilList:$('#profilList'),
@@ -176,6 +176,7 @@ el.generuj.onclick = async () => {
   if (!aktywnyProfil) return toast('Najpierw wybierz lub nagraj profil głosu', 'err');
   const fd = new FormData();
   fd.append('profil', aktywnyProfil);
+  fd.append('jezyk', el.jezykSel.value);
   fd.append('format', el.formatSel.value);
   fd.append('predkosc', el.tempo.value);
   if (wczytanyPlik) fd.append('plik', wczytanyPlik);
@@ -449,6 +450,37 @@ el.zapiszProfil.onclick = async () => {
   }
 };
 
+/* ── języki (XTTS-v2) ─────────────────────────────────────────── */
+const JEZYKI = [
+  ['pl','Polski'], ['en','Angielski'], ['de','Niemiecki'], ['fr','Francuski'],
+  ['es','Hiszpański'], ['it','Włoski'], ['pt','Portugalski'], ['nl','Niderlandzki'],
+  ['cs','Czeski'], ['ru','Rosyjski'], ['tr','Turecki'], ['ar','Arabski'],
+  ['zh-cn','Chiński'], ['ja','Japoński'], ['ko','Koreański'], ['hu','Węgierski'], ['hi','Hindi'],
+];
+function wypelnijJezyki() {
+  const zapisany = localStorage.getItem('jezyk') || 'pl';
+  el.jezykSel.innerHTML = '';
+  JEZYKI.forEach(([kod, nazwa]) => {
+    const o = document.createElement('option');
+    o.value = kod; o.textContent = nazwa;
+    if (kod === zapisany) o.selected = true;
+    el.jezykSel.appendChild(o);
+  });
+}
+el.jezykSel.addEventListener('change', () => localStorage.setItem('jezyk', el.jezykSel.value));
+
+/* ── motyw jasny/ciemny ───────────────────────────────────────── */
+function ustawMotyw(motyw) {
+  document.documentElement.setAttribute('data-theme', motyw);
+  el.themeBtn.textContent = motyw === 'light' ? '☀' : '☾';
+  el.themeBtn.title = motyw === 'light' ? 'motyw ciemny' : 'motyw jasny';
+  localStorage.setItem('motyw', motyw);
+}
+el.themeBtn.onclick = () =>
+  ustawMotyw(document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light');
+
 /* ── start ────────────────────────────────────────────────────── */
+ustawMotyw(localStorage.getItem('motyw') || 'dark');
+wypelnijJezyki();
 aktualizujLicznik();
 odswiezStatus();
