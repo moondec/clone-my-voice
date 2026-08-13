@@ -16,7 +16,8 @@
         <span class="sub">STUDIO</span>
       </div>
       <div class="topbar-right">
-        <button class="theme-btn" id="themeBtn" title="przełącz motyw">☾</button>
+        <button class="icon-btn" id="helpBtn" title="Pomoc — instrukcja (nowa karta)">?</button>
+        <button class="icon-btn" id="themeBtn" title="przełącz motyw">☾</button>
         <div class="status" id="status" title="stan silnika">
           <span class="led" id="led"></span>
           <span class="status-text" id="statusText">łączenie…</span>
@@ -88,7 +89,7 @@
           <audio id="recPreview" controls hidden></audio>
 
           <div class="trim" id="trim" hidden>
-            <div class="trim-lab">Przytnij ciszę i trzaski z początku i końca — przesuń uchwyty:</div>
+            <div class="trim-lab" id="trimLab">Przytnij ciszę i trzaski z początku i końca — przesuń uchwyty:</div>
             <div class="trim-wrap" id="trimWrap">
               <canvas id="trimFala" class="trim-fala"></canvas>
               <div class="trim-shade" id="shadeL"></div>

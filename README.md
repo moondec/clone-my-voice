@@ -114,12 +114,17 @@ Model ładuje się **raz** i pozostaje „ciepły" — kolejne generacje ruszaj�
 ```
 
 GUI oferuje: pole tekstu i wczytywanie `.txt`/`.docx`, **przełącznik profili głosowych**
-z odsłuchem każdej zapisanej próbki (porównanie i usuwanie), **wybór języka docelowego**
-(17 języków; próbka NIE musi być w języku docelowym — klonowanie międzyjęzykowe),
-**nagrywarkę próbki** z **edytorem przycięcia** (przesuwane uchwyty początku/końca na fali
-próbki — obcina ciszę i trzaski przed zapisem profilu; cięcie wykonuje ffmpeg dokładnie),
-wizualizację fali z odtwarzaczem, wybór formatu i tempa, **motyw jasny/ciemny** oraz
-pobieranie wyniku.
+z odsłuchem (▶), **edycją** (✂) i usuwaniem (✕) każdej zapisanej próbki, **wybór języka
+docelowego** (17 języków; próbka NIE musi być w języku docelowym — klonowanie
+międzyjęzykowe), **nagrywarkę próbki** z **edytorem przycięcia** (przesuwane uchwyty
+początku/końca na fali — obcina ciszę i trzaski; cięcie wykonuje ffmpeg dokładnie),
+wizualizację fali z odtwarzaczem, wybór formatu i tempa, **motyw jasny/ciemny**,
+przycisk **Pomoc (?)** (otwiera tę instrukcję w nowej karcie) oraz pobieranie wyniku.
+
+**Edycja zapisanej próbki.** Kliknij ✂ przy profilu — jego nagranie wczyta się do
+edytora przycięcia. Przesuń uchwyty i zapisz: ta sama nazwa **nadpisze** profil,
+a zmieniona nazwa utworzy **nowy** profil (oryginał zostaje). Cięcie i normalizację
+robi ffmpeg po stronie serwera.
 
 Zmienne środowiskowe: `MOWA_PORT` (domyślnie 8000), `MOWA_URZADZENIE` (`auto`/`cpu`/`cuda`/`mps`),
 `MOWA_DEEPSPEED=1` (CUDA). Przykład na maszynie z RTX:
@@ -150,7 +155,8 @@ bez działającego serwera zapytania do `/api/...` padają (pokaże się układ,
 danych i generowania). Zawsze przez `./serwuj` → http://127.0.0.1:8000.
 
 Profile to pliki `glos/*.wav`. Endpointy API (do integracji): `GET /api/status`,
-`GET/POST /api/profile`, `DELETE /api/profile/{nazwa}`, `POST /api/mowa`.
+`GET/POST /api/profile`, `GET /api/profile/{nazwa}/audio`, `DELETE /api/profile/{nazwa}`,
+`POST /api/mowa` oraz `GET /help` (ta instrukcja jako HTML).
 Uwaga: serwer słucha tylko na `127.0.0.1` (lokalnie); nagrywanie z mikrofonu działa
 na `localhost` bez HTTPS.
 

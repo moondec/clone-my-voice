@@ -9,7 +9,8 @@ const el = {
   dropzone:$('#dropzone'), plikInput:$('#plikInput'), wybierzPlik:$('#wybierzPlik'),
   plikChip:$('#plikChip'), dropLabel:$('#dropLabel'),
   profilSel:$('#profilSel'), jezykSel:$('#jezykSel'), formatSel:$('#formatSel'),
-  tempo:$('#tempo'), tempoVal:$('#tempoVal'), generuj:$('#generuj'), themeBtn:$('#themeBtn'),
+  tempo:$('#tempo'), tempoVal:$('#tempoVal'), generuj:$('#generuj'),
+  themeBtn:$('#themeBtn'), helpBtn:$('#helpBtn'), trimLab:$('#trimLab'),
   fala:$('#fala'), render:$('#render'), outMeta:$('#outMeta'),
   play:$('#play'), tc:$('#tc'), pobierz:$('#pobierz'), audio:$('#audio'),
   profilList:$('#profilList'),
@@ -27,6 +28,9 @@ let falaPeaks = null;         // szczyty do rysowania fali
 let recDuration = 0;          // długość nagranej próbki (s)
 let trimL = 0, trimR = 1;     // pozycje uchwytów przycięcia (0..1)
 let recPeaks = null;          // szczyty fali próbki
+let recFilename = 'probka.webm';   // nazwa pliku wysyłanego do serwera (edycja: .wav)
+let trybEdycji = null;        // nazwa edytowanego profilu (null = nagrywanie nowej próbki)
+const TRIM_LAB_NOWA = 'Przytnij ciszę i trzaski z początku i końca — przesuń uchwyty:';
 
 /* ── pomocnicze ───────────────────────────────────────────────── */
 function toast(msg, typ='') {
@@ -74,13 +78,15 @@ function renderProfile(profile) {
     const li = document.createElement('li');
     li.className = nazwa === aktywnyProfil ? 'active' : '';
     li.innerHTML = `<span class="p-dot"></span><span class="p-name"></span>
+                    <button class="p-edit" title="edytuj / przytnij próbkę">✂</button>
                     <button class="p-play" title="odsłuchaj próbkę">▶</button>
                     <button class="p-del" title="usuń profil">✕</button>`;
     li.querySelector('.p-name').textContent = nazwa;
     li.onclick = (ev) => {
-      if (ev.target.closest('.p-del') || ev.target.closest('.p-play')) return;
+      if (ev.target.closest('.p-del') || ev.target.closest('.p-play') || ev.target.closest('.p-edit')) return;
       ustawProfil(nazwa);
     };
+    li.querySelector('.p-edit').onclick = (ev) => { ev.stopPropagation(); edytujProfil(nazwa); };
     li.querySelector('.p-play').onclick = (ev) => { ev.stopPropagation(); odtworzProfil(nazwa); };
     li.querySelector('.p-del').onclick = (ev) => { ev.stopPropagation(); usunProfil(nazwa); };
     el.profilList.appendChild(li);
@@ -130,6 +136,28 @@ function oznaczGranyPrzycisk() {
 profilAudio.onplay = oznaczGranyPrzycisk;
 profilAudio.onpause = oznaczGranyPrzycisk;
 profilAudio.onended = () => { granyProfil = null; oznaczGranyPrzycisk(); };
+
+/* ── edycja (przycięcie) zapisanego profilu ───────────────────── */
+async function edytujProfil(nazwa) {
+  try {
+    const r = await fetch('/api/profile/' + encodeURIComponent(nazwa) + '/audio?t=' + Date.now());
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    recBlob = await r.blob();               // próbka staje się materiałem do przycięcia
+  } catch (e) {
+    return toast('Nie udało się wczytać próbki do edycji', 'err');
+  }
+  if (granyProfil === nazwa) profilAudio.pause();
+  trybEdycji = nazwa;
+  recFilename = nazwa + '.wav';
+  el.recPreview.src = URL.createObjectURL(recBlob);
+  el.recPreview.hidden = false;
+  el.recSave.hidden = false;
+  el.recNazwa.value = nazwa;
+  el.trimLab.innerHTML = `Edytujesz profil <b>${nazwa}</b> — przesuń uchwyty i zapisz `
+    + `(nadpisze profil). Zmień nazwę, aby zapisać jako nowy.`;
+  await pokazEdytorPrzyciecia();
+  el.trim.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
 
 /* ── licznik + wejście tekstu/pliku ───────────────────────────── */
 function aktualizujLicznik() {
@@ -301,6 +329,8 @@ async function startRec() {
   };
   mediaRec.start();
 
+  trybEdycji = null; recFilename = 'probka.webm';   // nowa próbka, nie edycja
+  el.trimLab.textContent = TRIM_LAB_NOWA; el.recNazwa.value = '';
   el.recBtn.classList.add('on'); el.recLabel.textContent = 'STOP';
   el.recPreview.hidden = true; el.recSave.hidden = true; el.trim.hidden = true;
   recStart = Date.now();
@@ -429,7 +459,7 @@ el.zapiszProfil.onclick = async () => {
   if (!recBlob) return toast('Najpierw nagraj próbkę', 'err');
   const fd = new FormData();
   fd.append('nazwa', nazwa);
-  fd.append('plik', recBlob, 'probka.webm');
+  fd.append('plik', recBlob, recFilename);
   if (recDuration) {
     fd.append('start', (trimL * recDuration).toFixed(3));
     fd.append('koniec', (trimR * recDuration).toFixed(3));
@@ -442,6 +472,7 @@ el.zapiszProfil.onclick = async () => {
     renderProfile(d.profile); ustawProfil(d.profil);
     el.recSave.hidden = true; el.recPreview.hidden = true; el.trim.hidden = true;
     el.recNazwa.value = ''; el.recTime.textContent = '00:00';
+    trybEdycji = null; recFilename = 'probka.webm'; el.trimLab.textContent = TRIM_LAB_NOWA;
     toast('Zapisano profil: ' + d.profil, 'ok');
   } catch (e) {
     toast('Błąd zapisu profilu: ' + e.message, 'err');
@@ -478,6 +509,9 @@ function ustawMotyw(motyw) {
 }
 el.themeBtn.onclick = () =>
   ustawMotyw(document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light');
+
+/* ── pomoc (renderowany README w nowej karcie) ────────────────── */
+el.helpBtn.onclick = () => window.open('/help', '_blank', 'noopener');
 
 /* ── start ────────────────────────────────────────────────────── */
 ustawMotyw(localStorage.getItem('motyw') || 'dark');
