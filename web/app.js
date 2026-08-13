@@ -74,12 +74,18 @@ function renderProfile(profile) {
     const li = document.createElement('li');
     li.className = nazwa === aktywnyProfil ? 'active' : '';
     li.innerHTML = `<span class="p-dot"></span><span class="p-name"></span>
+                    <button class="p-play" title="odsłuchaj próbkę">▶</button>
                     <button class="p-del" title="usuń profil">✕</button>`;
     li.querySelector('.p-name').textContent = nazwa;
-    li.onclick = (ev) => { if (ev.target.classList.contains('p-del')) return; ustawProfil(nazwa); };
+    li.onclick = (ev) => {
+      if (ev.target.closest('.p-del') || ev.target.closest('.p-play')) return;
+      ustawProfil(nazwa);
+    };
+    li.querySelector('.p-play').onclick = (ev) => { ev.stopPropagation(); odtworzProfil(nazwa); };
     li.querySelector('.p-del').onclick = (ev) => { ev.stopPropagation(); usunProfil(nazwa); };
     el.profilList.appendChild(li);
   });
+  oznaczGranyPrzycisk();
 
   // rozwijana lista GŁOS
   el.profilSel.innerHTML = '';
@@ -96,11 +102,34 @@ function ustawProfil(nazwa) {
 }
 async function usunProfil(nazwa) {
   if (!confirm(`Usunąć profil „${nazwa}"?`)) return;
+  if (granyProfil === nazwa) profilAudio.pause();
   const r = await fetch('/api/profile/' + encodeURIComponent(nazwa), { method:'DELETE' });
   if (r.ok) { const d = await r.json(); renderProfile(d.profile); toast('Usunięto profil: ' + nazwa, 'ok'); }
   else toast('Nie udało się usunąć profilu', 'err');
 }
 el.profilSel.onchange = () => ustawProfil(el.profilSel.value);
+
+/* ── odsłuch zapisanych profili ───────────────────────────────── */
+const profilAudio = new Audio();
+let granyProfil = null;
+function odtworzProfil(nazwa) {
+  if (granyProfil === nazwa && !profilAudio.paused) { profilAudio.pause(); return; }
+  granyProfil = nazwa;
+  profilAudio.src = '/api/profile/' + encodeURIComponent(nazwa) + '/audio?t=' + Date.now();
+  profilAudio.play().catch(() => toast('Nie udało się odtworzyć profilu', 'err'));
+}
+function oznaczGranyPrzycisk() {
+  el.profilList.querySelectorAll('li').forEach(li => {
+    const b = li.querySelector('.p-play');
+    if (!b) return;
+    const gra = li.querySelector('.p-name')?.textContent === granyProfil && !profilAudio.paused;
+    b.textContent = gra ? '❚❚' : '▶';
+    li.classList.toggle('gra', gra);
+  });
+}
+profilAudio.onplay = oznaczGranyPrzycisk;
+profilAudio.onpause = oznaczGranyPrzycisk;
+profilAudio.onended = () => { granyProfil = null; oznaczGranyPrzycisk(); };
 
 /* ── licznik + wejście tekstu/pliku ───────────────────────────── */
 function aktualizujLicznik() {

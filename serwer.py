@@ -135,6 +135,15 @@ def dodaj_profil(nazwa: str = Form(...), plik: UploadFile = File(...),
     return {"ok": True, "profil": cel.stem, "profile": lista_profili()}
 
 
+@app.get("/api/profile/{nazwa}/audio")
+def profil_audio(nazwa: str):
+    """Zwraca znormalizowaną próbkę profilu (do odsłuchu/porównania w GUI)."""
+    sciezka = _profil_sciezka(nazwa)
+    if not sciezka.exists():
+        raise HTTPException(404, f"Brak profilu: {nazwa}")
+    return FileResponse(str(sciezka), media_type="audio/wav", filename=f"{sciezka.stem}.wav")
+
+
 @app.delete("/api/profile/{nazwa}")
 def usun_profil(nazwa: str):
     sciezka = _profil_sciezka(nazwa)
